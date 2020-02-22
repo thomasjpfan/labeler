@@ -1,17 +1,17 @@
-import * as core from '@actions/core';
-import * as github from '@actions/github';
-import * as yaml from 'js-yaml';
-import {Minimatch} from 'minimatch';
+import * as core from "@actions/core";
+import * as github from "@actions/github";
+import * as yaml from "js-yaml";
+import { Minimatch } from "minimatch";
 
 async function run() {
   try {
-    const token = core.getInput('repo-token', {required: true});
-    const maxLabels: number = +core.getInput('max-labels', {required: true});
-    const configPath = core.getInput('configuration-path', {required: true});
+    const token = core.getInput("repo-token", { required: true });
+    const maxLabels: number = +core.getInput("max-labels", { required: true });
+    const configPath = core.getInput("configuration-path", { required: true });
 
     const prNumber = getPrNumber();
     if (!prNumber) {
-      console.log('Could not get pull request number from context, exiting');
+      console.log("Could not get pull request number from context, exiting");
       return;
     }
 
@@ -32,7 +32,7 @@ async function run() {
       }
     }
 
-    if ((labels.length > 0) && (labels.length <= maxLabels)) {
+    if (labels.length > 0 && labels.length <= maxLabels) {
       await addLabels(client, prNumber, labels);
     }
   } catch (error) {
@@ -62,9 +62,9 @@ async function getChangedFiles(
 
   const changedFiles = listFilesResponse.data.map(f => f.filename);
 
-  core.debug('found changed files:');
+  core.debug("found changed files:");
   for (const file of changedFiles) {
-    core.debug('  ' + file);
+    core.debug("  " + file);
   }
 
   return changedFiles;
@@ -97,13 +97,13 @@ async function fetchContent(
     ref: github.context.sha
   });
 
-  return Buffer.from(response.data.content, 'base64').toString();
+  return Buffer.from(response.data.content, "base64").toString();
 }
 
 function getLabelGlobMapFromObject(configObject: any): Map<string, string[]> {
   const labelGlobs: Map<string, string[]> = new Map();
   for (const label in configObject) {
-    if (typeof configObject[label] === 'string') {
+    if (typeof configObject[label] === "string") {
       labelGlobs.set(label, [configObject[label]]);
     } else if (configObject[label] instanceof Array) {
       labelGlobs.set(label, configObject[label]);
