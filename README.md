@@ -4,6 +4,10 @@ Pull request labeler triages PRs based on the paths that are modified in the PR.
 
 Note that only pull requests being opened from the same repository can be labeled.  This action will not currently work for pull requests from forks -- like is common in open source projects -- because the token for forked pull request workflows does not have write permissions.
 
+## Change in this fork
+
+- Adds `max-labels`. If the number of matched labels is greater than `max-labels` then no labels are added (default=100)
+
 ## Usage
 
 ### Create `.github/labeler.yml`
@@ -29,7 +33,7 @@ label2: example2/*
 # Add 'repo' label to any root file changes
 repo:
   - ./*
-  
+
 # Add '@domain/core' label to any change within the 'core' package
 @domain/core:
   - package/core/*
@@ -56,6 +60,7 @@ jobs:
     - uses: actions/labeler@v2
       with:
         repo-token: "${{ secrets.GITHUB_TOKEN }}"
+        max-labels: 4
 ```
 
 _Note: This grants access to the `GITHUB_TOKEN` so the action can make calls to GitHub's rest API_

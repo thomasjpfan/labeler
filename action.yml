@@ -1,9 +1,12 @@
 name: 'Pull Request Labeler'
 description: 'Add labels to new pull requests based on the files that are changed'
 author: 'GitHub'
-inputs: 
+inputs:
   repo-token:
     description: 'The GITHUB_TOKEN secret'
+  max-labels:
+    description: 'If the number of matched labels is greater then no labels are added'
+    default: '100'
   configuration-path:
     description: 'The path for the label configurations'
     default: '.github/labeler.yml'

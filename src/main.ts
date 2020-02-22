@@ -6,6 +6,7 @@ import {Minimatch} from 'minimatch';
 async function run() {
   try {
     const token = core.getInput('repo-token', {required: true});
+    const maxLabels: number = +core.getInput('max-labels', {required: true});
     const configPath = core.getInput('configuration-path', {required: true});
 
     const prNumber = getPrNumber();
@@ -31,7 +32,7 @@ async function run() {
       }
     }
 
-    if (labels.length > 0) {
+    if ((labels.length > 0) && (labels.length <= maxLabels)) {
       await addLabels(client, prNumber, labels);
     }
   } catch (error) {
