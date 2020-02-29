@@ -48,19 +48,19 @@ test:
 
 Create a workflow (eg: `.github/workflows/labeler.yml` see [Creating a Workflow file](https://help.github.com/en/articles/configuring-a-workflow#creating-a-workflow-file)) to utilize the labeler action with content:
 
-```
-name: "Pull Request Labeler"
+```yaml
 on:
-- pull_request
+  schedule:
+    - cron: '*/l0 * * * *'
 
 jobs:
   triage:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/labeler@v2
+    - uses: actions/thomasjpfan@v2.3.1
       with:
         repo-token: "${{ secrets.GITHUB_TOKEN }}"
-        max-labels: 4
+        max-labels: "4"
 ```
 
 _Note: This grants access to the `GITHUB_TOKEN` so the action can make calls to GitHub's rest API_
