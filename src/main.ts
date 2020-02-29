@@ -1,53 +1,55 @@
-import * as core from '@actions/core';
-import * as github from '@actions/github';
-import * as yaml from 'js-yaml';
-import {Minimatch} from 'minimatch';
+import * as core from "@actions/core";
+import * as github from "@actions/github";
+import * as yaml from "js-yaml";
+import { Minimatch } from "minimatch";
 
 async function run() {
   try {
-    const token = core.getInput('repo-token', {required: true});
-    const maxLabels: number = +core.getInput('max-labels', {required: true});
-    const configPath = core.getInput('configuration-path', {required: true});
-
-    const prNumber = getPrNumber();
-    if (!prNumber) {
-      console.log('Could not get pull request number from context, exiting');
-      return;
-    }
+    const token = core.getInput("repo-token", { required: true });
+    const maxLabels: number = +core.getInput("max-labels", { required: true });
+    const configPath = core.getInput("configuration-path", { required: true });
 
     const client = new github.GitHub(token);
 
-    core.debug(`fetching changed files for pr #${prNumber}`);
-    const changedFiles: string[] = await getChangedFiles(client, prNumber);
-    const labelGlobs: Map<string, string[]> = await getLabelGlobs(
-      client,
-      configPath
-    );
+    const options = client.pulls.list.endpoint.merge({
+      owner: github.context.repo.owner,
+      repo: github.context.repo.repo
+    });
 
-    const labels: string[] = [];
-    for (const [label, globs] of labelGlobs.entries()) {
-      core.debug(`processing ${label}`);
-      if (checkGlobs(changedFiles, globs)) {
-        labels.push(label);
+    for await (const response of client.paginate.iterator(options)) {
+      // do whatever you want with each response, break out of the loop, etc.
+      for (const singleResponse of response.data) {
+        const prNumber: number = singleResponse.number;
+        const oldLabels: string[] = singleResponse.labels.map(f => f.name);
+
+        core.debug(`fetching changed files for pr #${prNumber}`);
+        const changedFiles: string[] = await getChangedFiles(client, prNumber);
+        const labelGlobs: Map<string, string[]> = await getLabelGlobs(
+          client,
+          configPath
+        );
+
+        const labels: string[] = [];
+        for (const [label, globs] of labelGlobs.entries()) {
+          core.debug(`processing ${label}`);
+          if (checkGlobs(changedFiles, globs)) {
+            labels.push(label);
+          }
+        }
+
+        if (!labels.every(val => oldLabels.includes(val))) {
+          continue;
+        }
+
+        if (labels.length > 0 && labels.length <= maxLabels) {
+          await addLabels(client, prNumber, labels);
+        }
       }
-    }
-
-    if ((labels.length > 0) && (labels.length <= maxLabels)) {
-      await addLabels(client, prNumber, labels);
     }
   } catch (error) {
     core.error(error);
     core.setFailed(error.message);
   }
-}
-
-function getPrNumber(): number | undefined {
-  const pullRequest = github.context.payload.pull_request;
-  if (!pullRequest) {
-    return undefined;
-  }
-
-  return pullRequest.number;
 }
 
 async function getChangedFiles(
@@ -62,9 +64,9 @@ async function getChangedFiles(
 
   const changedFiles = listFilesResponse.data.map(f => f.filename);
 
-  core.debug('found changed files:');
+  core.debug("found changed files:");
   for (const file of changedFiles) {
-    core.debug('  ' + file);
+    core.debug("  " + file);
   }
 
   return changedFiles;
@@ -97,13 +99,13 @@ async function fetchContent(
     ref: github.context.sha
   });
 
-  return Buffer.from(response.data.content, 'base64').toString();
+  return Buffer.from(response.data.content, "base64").toString();
 }
 
 function getLabelGlobMapFromObject(configObject: any): Map<string, string[]> {
   const labelGlobs: Map<string, string[]> = new Map();
   for (const label in configObject) {
-    if (typeof configObject[label] === 'string') {
+    if (typeof configObject[label] === "string") {
       labelGlobs.set(label, [configObject[label]]);
     } else if (configObject[label] instanceof Array) {
       labelGlobs.set(label, configObject[label]);
