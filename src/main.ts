@@ -37,7 +37,7 @@ async function run() {
           }
         }
 
-        if (!labels.every(val => oldLabels.includes(val))) {
+        if (labels.every(val => oldLabels.includes(val))) {
           continue;
         }
 
