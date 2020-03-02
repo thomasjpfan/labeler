@@ -33,7 +33,7 @@ async function run() {
           continue;
         }
 
-        core.debug(`fetching changed files for pr #${prNumber}`);
+        core.debug(`pr #${prNumber}, fetching changed files`);
         const changedFiles: string[] = await getChangedFiles(client, prNumber);
 
         const labelsToAdd: string[] = [];
@@ -54,6 +54,7 @@ async function run() {
         // The maximum number of labels must not exceed maxLabels in total
         const allowedLabelCnt = maxLabels - currentMatchingLabels.length;
         if (labelsToAdd.length > 0 && labelsToAdd.length <= allowedLabelCnt) {
+          core.info(`#${prNumber}, adding labels: ${labelsToAdd}`);
           await addLabels(client, prNumber, labelsToAdd);
         }
       }
