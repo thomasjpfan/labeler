@@ -13,7 +13,8 @@ async function run() {
 
     const options = client.pulls.list.endpoint.merge({
       owner: github.context.repo.owner,
-      repo: github.context.repo.repo
+      repo: github.context.repo.repo,
+      per_page: 100
     });
 
     const labelGlobs: Map<string, string[]> = await getLabelGlobs(
