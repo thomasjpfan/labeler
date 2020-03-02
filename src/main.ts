@@ -16,33 +16,44 @@ async function run() {
       repo: github.context.repo.repo
     });
 
+    const labelGlobs: Map<string, string[]> = await getLabelGlobs(
+      client,
+      configPath
+    );
+
     for await (const response of client.paginate.iterator(options)) {
-      // do whatever you want with each response, break out of the loop, etc.
       for (const singleResponse of response.data) {
         const prNumber: number = singleResponse.number;
-        const oldLabels: string[] = singleResponse.labels.map(f => f.name);
+        const currentMatchingLabels: string[] = singleResponse.labels.map(
+          resp => resp.name).filter(label => labelGlobs.has(label));
 
-        core.debug(`fetching changed files for pr #${prNumber}`);
-        const changedFiles: string[] = await getChangedFiles(client, prNumber);
-        const labelGlobs: Map<string, string[]> = await getLabelGlobs(
-          client,
-          configPath
-        );
-
-        const labels: string[] = [];
-        for (const [label, globs] of labelGlobs.entries()) {
-          core.debug(`processing ${label}`);
-          if (checkGlobs(changedFiles, globs)) {
-            labels.push(label);
-          }
-        }
-
-        if (labels.every(val => oldLabels.includes(val))) {
+        // If there are more than maxLabels do not add any more labels
+        if (currentMatchingLabels.length >= maxLabels) {
           continue;
         }
 
-        if (labels.length > 0 && labels.length <= maxLabels) {
-          await addLabels(client, prNumber, labels);
+        core.debug(`fetching changed files for pr #${prNumber}`);
+        const changedFiles: string[] = await getChangedFiles(client, prNumber);
+
+        const labelsToAdd: string[] = [];
+        for (const [label, globs] of labelGlobs.entries()) {
+          core.debug(`processing ${label}`);
+          if (!changedFilesMatchesGlob(changedFiles, globs)) {
+            continue;
+          }
+
+          if (currentMatchingLabels.indexOf(label)) {
+            continue;
+          }
+
+          // label matched and not in current matching labels
+          labelsToAdd.push(label)
+        }
+
+        // The maximum number of labels must not exceed maxLabels in total
+        const allowedLabelCnt = maxLabels - currentMatchingLabels.length
+        if (labelsToAdd.length > 0 && labelsToAdd.length <= allowedLabelCnt) {
+          await addLabels(client, prNumber, labelsToAdd);
         }
       }
     }
@@ -119,7 +130,7 @@ function getLabelGlobMapFromObject(configObject: any): Map<string, string[]> {
   return labelGlobs;
 }
 
-function checkGlobs(changedFiles: string[], globs: string[]): boolean {
+function changedFilesMatchesGlob(changedFiles: string[], globs: string[]): boolean {
   for (const glob of globs) {
     core.debug(` checking pattern ${glob}`);
     const matcher = new Minimatch(glob);
