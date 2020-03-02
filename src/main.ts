@@ -29,8 +29,9 @@ async function run() {
           .map(resp => resp.name)
           .filter(label => labelGlobs.has(label));
 
-        // If there are more than maxLabels do not add any more labels
-        if (currentMatchingLabels.length >= maxLabels) {
+        // If the PR has already been labeled, then skip labeling the PR
+        // This is to reduce the number of API calls
+        if (currentMatchingLabels.length >= 0) {
           continue;
         }
 
@@ -44,17 +45,12 @@ async function run() {
             continue;
           }
 
-          if (currentMatchingLabels.indexOf(label) !== -1) {
-            continue;
-          }
-
           // label matched and not in current matching labels
           labelsToAdd.push(label);
         }
 
         // The maximum number of labels must not exceed maxLabels in total
-        const allowedLabelCnt = maxLabels - currentMatchingLabels.length;
-        if (labelsToAdd.length > 0 && labelsToAdd.length <= allowedLabelCnt) {
+        if (labelsToAdd.length > 0 && labelsToAdd.length <= maxLabels) {
           core.info(`#${prNumber}, adding labels: ${labelsToAdd}`);
           await addLabels(client, prNumber, labelsToAdd);
         }
