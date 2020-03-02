@@ -14,7 +14,9 @@ async function run() {
     const options = client.pulls.list.endpoint.merge({
       owner: github.context.repo.owner,
       repo: github.context.repo.repo,
-      per_page: 100
+      per_page: 100,
+      sort: "created",
+      direction: "asc"
     });
 
     const labelGlobs: Map<string, string[]> = await getLabelGlobs(
