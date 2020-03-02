@@ -43,7 +43,7 @@ async function run() {
             continue;
           }
 
-          if (currentMatchingLabels.indexOf(label)) {
+          if (currentMatchingLabels.indexOf(label) !== -1) {
             continue;
           }
 
