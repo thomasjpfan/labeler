@@ -33,7 +33,7 @@ async function run() {
 
         // If the PR has already been labeled, then skip labeling the PR
         // This is to reduce the number of API calls
-        if (currentMatchingLabels.length >= 0) {
+        if (currentMatchingLabels.length > 0) {
           continue;
         }
 
