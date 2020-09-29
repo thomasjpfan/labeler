@@ -9,54 +9,45 @@ async function run() {
     const maxLabels: number = +core.getInput("max-labels", { required: true });
     const configPath = core.getInput("configuration-path", { required: true });
 
+    const prNumber = getPrNumber();
+    if (!prNumber) {
+      console.log("Could not get pull request number from context, exiting");
+      return;
+    }
     const client = new github.GitHub(token);
-
-    const options = client.pulls.list.endpoint.merge({
-      owner: github.context.repo.owner,
-      repo: github.context.repo.repo,
-      per_page: 100,
-      sort: "created",
-      direction: "asc"
-    });
 
     const labelGlobs: Map<string, string[]> = await getLabelGlobs(
       client,
       configPath
     );
 
-    for await (const response of client.paginate.iterator(options)) {
-      for (const singleResponse of response.data) {
-        const prNumber: number = singleResponse.number;
-        const currentMatchingLabels: string[] = singleResponse.labels
-          .map(resp => resp.name)
-          .filter(label => labelGlobs.has(label));
+    const labelsFromPR = await getLabelsFromPR(client, prNumber)
+    const currentMatchingLabels = labelsFromPR.filter(label => labelGlobs.has(label));
 
-        // If the PR has already been labeled, then skip labeling the PR
-        // This is to reduce the number of API calls
-        if (currentMatchingLabels.length > 0) {
-          continue;
-        }
+    // If the PR has already been labeled, then skip labeling the PR
+    // This is to reduce the number of API calls
+    if (currentMatchingLabels.length > 0) {
+      return;
+    }
 
-        core.debug(`pr #${prNumber}, fetching changed files`);
-        const changedFiles: string[] = await getChangedFiles(client, prNumber);
+    core.debug(`pr #${prNumber}, fetching changed files`);
+    const changedFiles: string[] = await getChangedFiles(client, prNumber);
 
-        const labelsToAdd: string[] = [];
-        for (const [label, globs] of labelGlobs.entries()) {
-          core.debug(`processing ${label}`);
-          if (!changedFilesMatchesGlob(changedFiles, globs)) {
-            continue;
-          }
-
-          // label matched and not in current matching labels
-          labelsToAdd.push(label);
-        }
-
-        // The maximum number of labels must not exceed maxLabels in total
-        if (labelsToAdd.length > 0 && labelsToAdd.length <= maxLabels) {
-          core.info(`#${prNumber}, adding labels: ${labelsToAdd}`);
-          await addLabels(client, prNumber, labelsToAdd);
-        }
+    const labelsToAdd: string[] = [];
+    for (const [label, globs] of labelGlobs.entries()) {
+      core.debug(`processing ${label}`);
+      if (!changedFilesMatchesGlob(changedFiles, globs)) {
+        continue;
       }
+
+      // label matched and not in current matching labels
+      labelsToAdd.push(label);
+    }
+
+    // The maximum number of labels must not exceed maxLabels in total
+    if (labelsToAdd.length > 0 && labelsToAdd.length <= maxLabels) {
+      core.info(`#${prNumber}, adding labels: ${labelsToAdd}`);
+      await addLabels(client, prNumber, labelsToAdd);
     }
   } catch (error) {
     core.error(error.message);
@@ -64,17 +55,28 @@ async function run() {
   }
 }
 
-async function getChangedFiles(
-  client: github.GitHub,
-  prNumber: number
-): Promise<string[]> {
-  const listFilesResponse = await client.pulls.listFiles({
+async function getLabelsFromPR(client: github.GitHub, prNumber: number): Promise<string[]> {
+  const {data: pullRequest} = await client.pulls.get({
     owner: github.context.repo.owner,
     repo: github.context.repo.repo,
     pull_number: prNumber
   });
 
-  const changedFiles = listFilesResponse.data.map(f => f.filename);
+  return pullRequest.labels.map(item => item.name)
+}
+
+async function getChangedFiles(
+  client: github.GitHub,
+  prNumber: number
+): Promise<string[]> {
+  const listFilesOptions = client.pulls.listFiles.endpoint.merge({
+    owner: github.context.repo.owner,
+    repo: github.context.repo.repo,
+    pull_number: prNumber
+  });
+
+  const listFilesResponse = await client.paginate(listFilesOptions);
+  const changedFiles = listFilesResponse.map(f => f.filename);
 
   core.debug("found changed files:");
   for (const file of changedFiles) {
@@ -160,6 +162,15 @@ async function addLabels(
     issue_number: prNumber,
     labels: labels
   });
+}
+
+function getPrNumber(): number | undefined {
+  const pullRequest = github.context.payload.pull_request;
+  if (!pullRequest) {
+    return undefined;
+  }
+
+  return pullRequest.number;
 }
 
 run();
