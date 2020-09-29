@@ -49,9 +49,7 @@ test:
 Create a workflow (eg: `.github/workflows/labeler.yml` see [Creating a Workflow file](https://help.github.com/en/articles/configuring-a-workflow#creating-a-workflow-file)) to utilize the labeler action with content:
 
 ```yaml
-on:
-  schedule:
-    - cron: '*/l0 * * * *'
+on: pull_request_target
 
 jobs:
   triage:

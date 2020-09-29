@@ -21,8 +21,10 @@ async function run() {
       configPath
     );
 
-    const labelsFromPR = await getLabelsFromPR(client, prNumber)
-    const currentMatchingLabels = labelsFromPR.filter(label => labelGlobs.has(label));
+    const labelsFromPR = await getLabelsFromPR(client, prNumber);
+    const currentMatchingLabels = labelsFromPR.filter(label =>
+      labelGlobs.has(label)
+    );
 
     // If the PR has already been labeled, then skip labeling the PR
     // This is to reduce the number of API calls
@@ -55,14 +57,17 @@ async function run() {
   }
 }
 
-async function getLabelsFromPR(client: github.GitHub, prNumber: number): Promise<string[]> {
-  const {data: pullRequest} = await client.pulls.get({
+async function getLabelsFromPR(
+  client: github.GitHub,
+  prNumber: number
+): Promise<string[]> {
+  const { data: pullRequest } = await client.pulls.get({
     owner: github.context.repo.owner,
     repo: github.context.repo.repo,
     pull_number: prNumber
   });
 
-  return pullRequest.labels.map(item => item.name)
+  return pullRequest.labels.map(item => item.name);
 }
 
 async function getChangedFiles(
